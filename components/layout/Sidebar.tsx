@@ -1,9 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { Calendar, LayoutDashboard, BarChart3, Settings, LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/lib/supabase/browser-client';
+import toast from 'react-hot-toast';
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
@@ -14,6 +16,20 @@ const navigation = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+
+      toast.success('Logged out successfully');
+      router.push('/login');
+    } catch (error) {
+      console.error('Logout error:', error);
+      toast.error('Failed to logout');
+    }
+  };
 
   return (
     <div className="flex flex-col w-64 bg-white border-r border-[#D7CCC8] h-screen">
@@ -48,6 +64,7 @@ export function Sidebar() {
 
       <div className="px-4 py-4 border-t border-[#E8DFD5]">
         <button
+          onClick={handleLogout}
           className="flex items-center gap-3 w-full px-4 py-3 rounded-lg text-sm font-medium text-[#C62828] hover:bg-red-50 transition-all"
         >
           <LogOut className="w-5 h-5" />

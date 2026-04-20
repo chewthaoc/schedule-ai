@@ -1,22 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase/client';
+import { cookies } from 'next/headers';
+import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
+    const cookieStore = cookies();
+    const supabaseServer = createServerComponentClient({ cookies: () => cookieStore });
 
-    if (!userId) {
+    const { data: { user }, error: authError } = await supabaseServer.auth.getUser();
+
+    if (authError || !user) {
       return NextResponse.json(
-        { error: 'User ID is required' },
-        { status: 400 }
+        { error: 'Unauthorized' },
+        { status: 401 }
       );
     }
 
     const { data, error } = await supabase
       .from('schedules')
       .select('*')
-      .eq('user_id', userId)
+      .eq('user_id', user.id)
       .order('created_at', { ascending: false });
 
     if (error) throw error;
@@ -33,10 +37,22 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { userId, title, description, type, color, imageUrl } = body;
+    const cookieStore = cookies();
+    const supabaseServer = createServerComponentClient({ cookies: () => cookieStore });
 
-    if (!userId || !title || !type) {
+    const { data: { user }, error: authError } = await supabaseServer.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    const body = await request.json();
+    const { title, description, type, color, imageUrl } = body;
+
+    if (!title || !type) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
@@ -47,7 +63,7 @@ export async function POST(request: NextRequest) {
       .from('schedules')
       .insert([
         {
-          user_id: userId,
+          user_id: user.id,
           title,
           description,
           type,

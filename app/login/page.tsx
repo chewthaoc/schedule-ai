@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { Loader2 } from 'lucide-react';
+import { supabase } from '@/lib/supabase/browser-client';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -22,14 +23,37 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      // Simulate login
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: formData.email,
+        password: formData.password,
+      });
+
+      if (error) throw error;
+
       toast.success('Login successful!');
       router.push('/dashboard');
-    } catch (error) {
-      toast.error('Login failed. Please try again.');
+      router.refresh();
+    } catch (error: any) {
+      console.error('Login error:', error);
+      toast.error(error.message || 'Login failed. Please try again.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/dashboard`,
+        },
+      });
+
+      if (error) throw error;
+    } catch (error: any) {
+      console.error('Google login error:', error);
+      toast.error(error.message || 'Google login failed');
     }
   };
 
@@ -99,7 +123,7 @@ export default function LoginPage() {
                 </div>
               </div>
 
-              <Button type="button" variant="outline" className="w-full">
+              <Button type="button" variant="outline" className="w-full" onClick={handleGoogleLogin}>
                 <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
                   <path
                     fill="currentColor"

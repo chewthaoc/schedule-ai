@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { Loader2 } from 'lucide-react';
+import { supabase } from '@/lib/supabase/browser-client';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -27,17 +28,49 @@ export default function RegisterPage() {
       return;
     }
 
+    if (formData.password.length < 6) {
+      toast.error('Password must be at least 6 characters');
+      return;
+    }
+
     setLoading(true);
 
     try {
-      // Simulate registration
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      toast.success('Account created successfully!');
-      router.push('/dashboard');
-    } catch (error) {
-      toast.error('Registration failed. Please try again.');
+      const { data, error } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+        options: {
+          data: {
+            full_name: formData.fullName,
+          },
+        },
+      });
+
+      if (error) throw error;
+
+      toast.success('Account created successfully! Please check your email to verify.');
+      router.push('/login');
+    } catch (error: any) {
+      console.error('Registration error:', error);
+      toast.error(error.message || 'Registration failed. Please try again.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleGoogleSignup = async () => {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/dashboard`,
+        },
+      });
+
+      if (error) throw error;
+    } catch (error: any) {
+      console.error('Google signup error:', error);
+      toast.error(error.message || 'Google signup failed');
     }
   };
 
@@ -123,7 +156,7 @@ export default function RegisterPage() {
                 </div>
               </div>
 
-              <Button type="button" variant="outline" className="w-full">
+              <Button type="button" variant="outline" className="w-full" onClick={handleGoogleSignup}>
                 <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
                   <path
                     fill="currentColor"
