@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { openai } from '@/lib/openai/client';
+import { openai, getModelName } from '@/lib/openai/client';
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
     }
 
     const response = await openai.chat.completions.create({
-      model: 'gpt-4o',
+      model: getModelName(),
       messages: [
         {
           role: 'user',
