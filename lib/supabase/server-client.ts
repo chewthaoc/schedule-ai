@@ -1,22 +1,24 @@
-import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
-import { redirect } from 'next/navigation';
 
-export async function createServerClient() {
-  const cookieStore = cookies();
-  return createServerComponentClient({ cookies: () => cookieStore });
+export async function createSupabaseServer() {
+  const cookieStore = await cookies();
+
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return cookieStore.get(name)?.value;
+        },
+      },
+    }
+  );
 }
 
 export async function getUser() {
-  const supabase = await createServerClient();
+  const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
-  return user;
-}
-
-export async function requireAuth() {
-  const user = await getUser();
-  if (!user) {
-    redirect('/login');
-  }
   return user;
 }

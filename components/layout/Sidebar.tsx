@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Calendar, LayoutDashboard, BarChart3, Settings, LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { supabase } from '@/lib/supabase/browser-client';
+import { createBrowserClient } from '@/lib/supabase/browser-client';
 import toast from 'react-hot-toast';
 
 const navigation = [
@@ -20,6 +20,7 @@ export function Sidebar() {
 
   const handleLogout = async () => {
     try {
+      const supabase = createBrowserClient();
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
 

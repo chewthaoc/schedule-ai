@@ -8,7 +8,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { Loader2 } from 'lucide-react';
-import { supabase } from '@/lib/supabase/browser-client';
+import { createBrowserClient } from '@/lib/supabase/browser-client';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -36,6 +36,7 @@ export default function RegisterPage() {
     setLoading(true);
 
     try {
+      const supabase = createBrowserClient();
       const { data, error } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
@@ -60,6 +61,7 @@ export default function RegisterPage() {
 
   const handleGoogleSignup = async () => {
     try {
+      const supabase = createBrowserClient();
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
