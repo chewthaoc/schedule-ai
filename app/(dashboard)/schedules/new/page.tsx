@@ -1,16 +1,19 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardBody } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input, Textarea } from '@/components/ui/Input';
 import { Upload, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
+import { createBrowserClient } from '@/lib/supabase/browser-client';
+import { uploadScheduleImage } from '@/lib/supabase/storage';
 
 export default function NewSchedulePage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -19,6 +22,17 @@ export default function NewSchedulePage() {
   });
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string>('');
+
+  useEffect(() => {
+    async function getUser() {
+      const supabase = createBrowserClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setUserId(user.id);
+      }
+    }
+    getUser();
+  }, []);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -34,18 +48,36 @@ export default function NewSchedulePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!userId) {
+      toast.error('User not authenticated');
+      return;
+    }
+
     setLoading(true);
 
     try {
       let extractedEvents = [];
+      let uploadedImageUrl = null;
 
-      // Step 1: Extract events from image if provided
-      if (imageFile && imagePreview) {
+      // Step 1: Upload image to Supabase Storage if provided
+      if (imageFile) {
+        toast.loading('Uploading image...');
+        uploadedImageUrl = await uploadScheduleImage(imageFile, userId);
+        toast.dismiss();
+        toast.success('Image uploaded!');
+      }
+
+      // Step 2: Extract events from image if provided
+      if (uploadedImageUrl) {
+        toast.loading('Extracting events with AI...');
         const extractResponse = await fetch('/api/ai/extract', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ imageUrl: imagePreview }),
+          body: JSON.stringify({ imageUrl: uploadedImageUrl }),
         });
+
+        toast.dismiss();
 
         if (!extractResponse.ok) {
           throw new Error('Failed to extract events from image');
@@ -56,7 +88,7 @@ export default function NewSchedulePage() {
         toast.success(`Extracted ${events.length} events from image!`);
       }
 
-      // Step 2: Create the schedule
+      // Step 3: Create the schedule
       const scheduleResponse = await fetch('/api/schedules', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -65,7 +97,7 @@ export default function NewSchedulePage() {
           description: formData.description,
           type: formData.type,
           color: formData.color,
-          imageUrl: imagePreview || null,
+          imageUrl: uploadedImageUrl,
         }),
       });
 
@@ -75,7 +107,7 @@ export default function NewSchedulePage() {
 
       const { schedule } = await scheduleResponse.json();
 
-      // Step 3: Save extracted events to the schedule
+      // Step 4: Save extracted events to the schedule
       if (extractedEvents.length > 0) {
         const eventPromises = extractedEvents.map((event: any) =>
           fetch('/api/events', {
