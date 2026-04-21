@@ -11,6 +11,7 @@ import { LoadingSpinner } from '@/components/ui/Loading';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
 
 import { AddEventModal } from '@/components/modals/AddEventModal';
+import { EditEventModal } from '@/components/modals/EditEventModal';
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const TIME_SLOTS = [
@@ -28,6 +29,7 @@ interface Schedule {
 interface Event {
   id: string;
   title: string;
+  description: string;
   location: string;
   start_time: string;
   end_time: string;
@@ -44,6 +46,7 @@ export default function ScheduleDetailPage({ params }: { params: { id: string } 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showAddEventModal, setShowAddEventModal] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<Event | null>(null);
 
   useEffect(() => {
     fetchScheduleData();
@@ -89,6 +92,28 @@ export default function ScheduleDetailPage({ params }: { params: { id: string } 
     } catch (error: any) {
       console.error('Error deleting schedule:', error);
       toast.error('Failed to delete schedule');
+    }
+  };
+
+  const handleDeleteEvent = async (eventId: string) => {
+    if (!confirm('Are you sure you want to delete this event?')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/events/${eventId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete event');
+      }
+
+      toast.success('Event deleted successfully');
+      fetchScheduleData();
+    } catch (error: any) {
+      console.error('Error deleting event:', error);
+      toast.error('Failed to delete event');
     }
   };
 
@@ -185,11 +210,21 @@ export default function ScheduleDetailPage({ params }: { params: { id: string } 
                         <td key={day} className="py-2 px-2 border border-[#D7CCC8] align-top">
                           {event ? (
                             <div
-                              className="rounded p-3 text-center cursor-pointer hover:opacity-90 transition-opacity"
+                              className="rounded p-3 text-center cursor-pointer hover:opacity-90 transition-opacity group relative"
                               style={{ backgroundColor: `${event.color}20`, color: event.color }}
+                              onClick={() => setEditingEvent(event)}
                             >
                               <div className="font-semibold text-sm">{event.title}</div>
                               <div className="text-xs opacity-75 mt-1">{event.location}</div>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteEvent(event.id);
+                                }}
+                                className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-red-600 transition-all"
+                              >
+                                ×
+                              </button>
                             </div>
                           ) : (
                             <div className="text-center text-[#BCAAA4] text-sm">—</div>
@@ -218,12 +253,12 @@ export default function ScheduleDetailPage({ params }: { params: { id: string } 
                 {dayEvents.length > 0 ? (
                   <CardBody className="p-0 divide-y divide-[#E8DFD5]">
                     {dayEvents.map((event) => (
-                      <div key={event.id} className="flex items-center justify-between p-4 hover:bg-[#F5F0E8] transition-colors">
-                        <div className="flex items-center gap-4">
+                      <div key={event.id} className="flex items-center justify-between p-4 hover:bg-[#F5F0E8] transition-colors group">
+                        <div className="flex items-center gap-4 flex-1">
                           <div className="w-24 text-sm font-medium text-[#8D6E63]">
                             {event.start_time} - {event.end_time}
                           </div>
-                          <div>
+                          <div className="flex-1">
                             <div className="font-semibold text-[#2C1810]">{event.title}</div>
                             <div className="text-sm text-[#8D6E63] flex items-center gap-2 mt-1">
                               <MapPin className="w-3 h-3" />
@@ -231,12 +266,26 @@ export default function ScheduleDetailPage({ params }: { params: { id: string } 
                             </div>
                           </div>
                         </div>
-                        <span
-                          className="px-2 py-1 rounded text-xs font-medium"
-                          style={{ backgroundColor: `${event.color}20`, color: event.color }}
-                        >
-                          {event.category}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span
+                            className="px-2 py-1 rounded text-xs font-medium"
+                            style={{ backgroundColor: `${event.color}20`, color: event.color }}
+                          >
+                            {event.category}
+                          </span>
+                          <button
+                            onClick={() => setEditingEvent(event)}
+                            className="opacity-0 group-hover:opacity-100 text-[#8D6E63] hover:text-[#2C1810] transition-all p-1"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteEvent(event.id)}
+                            className="opacity-0 group-hover:opacity-100 text-red-500 hover:text-red-700 transition-all p-1"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </CardBody>
@@ -265,6 +314,15 @@ export default function ScheduleDetailPage({ params }: { params: { id: string } 
           scheduleId={params.id}
           scheduleColor={schedule.color}
           onClose={() => setShowAddEventModal(false)}
+          onSuccess={fetchScheduleData}
+        />
+      )}
+
+      {/* Edit Event Modal */}
+      {editingEvent && (
+        <EditEventModal
+          event={editingEvent}
+          onClose={() => setEditingEvent(null)}
           onSuccess={fetchScheduleData}
         />
       )}
