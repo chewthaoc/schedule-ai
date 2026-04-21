@@ -91,7 +91,16 @@ AI_MODEL=gpt-4o
 
 详细步骤见 [STORAGE_SETUP.md](./STORAGE_SETUP.md)
 
-5. **运行开发服务器**
+5. **配置邮件发送**
+
+配置忘记密码和邮箱验证功能：
+- 在 Supabase 中设置 Redirect URLs
+- 配置邮件模板
+- （推荐）配置自定义 SMTP
+
+详细步骤见 [EMAIL_SETUP.md](./EMAIL_SETUP.md)
+
+6. **运行开发服务器**
 ```bash
 npm run dev
 ```
@@ -217,6 +226,7 @@ schedule-ai/
 - [完成总结](./COMPLETION_SUMMARY.md) - 详细的项目总结
 - [审查报告](./AUDIT_REPORT.md) - 代码审查和问题修复
 - [存储设置](./STORAGE_SETUP.md) - Supabase Storage 配置
+- [邮件设置](./EMAIL_SETUP.md) - 邮件发送和密码重置配置
 - [Bug 修复](./BUG_FIXES.md) - 已修复的问题列表
 
 ---
