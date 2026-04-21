@@ -10,6 +10,8 @@ import toast from 'react-hot-toast';
 import { LoadingSpinner } from '@/components/ui/Loading';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
 
+import { AddEventModal } from '@/components/modals/AddEventModal';
+
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const TIME_SLOTS = [
   '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00'
@@ -41,6 +43,7 @@ export default function ScheduleDetailPage({ params }: { params: { id: string } 
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showAddEventModal, setShowAddEventModal] = useState(false);
 
   useEffect(() => {
     fetchScheduleData();
@@ -250,11 +253,21 @@ export default function ScheduleDetailPage({ params }: { params: { id: string } 
 
       {/* Add Event Button */}
       <div className="mt-6">
-        <Button variant="primary">
+        <Button variant="primary" onClick={() => setShowAddEventModal(true)}>
           <Plus className="w-4 h-4 mr-2" />
           Add Event
         </Button>
       </div>
+
+      {/* Add Event Modal */}
+      {showAddEventModal && (
+        <AddEventModal
+          scheduleId={params.id}
+          scheduleColor={schedule.color}
+          onClose={() => setShowAddEventModal(false)}
+          onSuccess={fetchScheduleData}
+        />
+      )}
     </div>
   );
 }
