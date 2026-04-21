@@ -38,21 +38,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Encode the URL to handle any special characters
-    let encodedUrl = imageUrl;
-    try {
-      // Parse the URL and encode only the pathname
-      const url = new URL(imageUrl);
-      const pathParts = url.pathname.split('/');
-      const encodedPath = pathParts.map(part => encodeURIComponent(part)).join('/');
-      encodedUrl = `${url.origin}${encodedPath}${url.search}`;
-    } catch (e) {
-      console.error('Failed to encode URL:', e);
-    }
+    console.log('Original imageUrl:', imageUrl);
 
     // Fetch the image and convert to base64
-    const imageResponse = await fetch(encodedUrl);
-    if (!imageResponse.ok) {
+    // Use the original URL directly - Supabase Storage URLs should work
+    let imageResponse;
+    try {
+      imageResponse = await fetch(imageUrl);
+      if (!imageResponse.ok) {
+        console.error('Failed to fetch image:', imageResponse.status, imageResponse.statusText);
+        throw new Error(`Failed to fetch image: ${imageResponse.status}`);
+      }
+    } catch (fetchError) {
+      console.error('Fetch error:', fetchError);
       throw new Error('Failed to fetch image from storage');
     }
 
@@ -60,6 +58,8 @@ export async function POST(request: NextRequest) {
     const base64Image = Buffer.from(imageBuffer).toString('base64');
     const mimeType = imageResponse.headers.get('content-type') || 'image/jpeg';
     const dataUrl = `data:${mimeType};base64,${base64Image}`;
+
+    console.log('Image converted to base64, size:', base64Image.length, 'mime:', mimeType);
 
     const response = await openai.chat.completions.create({
       model: getModelName(),
