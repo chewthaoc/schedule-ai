@@ -38,8 +38,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Encode the URL to handle any special characters
+    let encodedUrl = imageUrl;
+    try {
+      // Parse the URL and encode only the pathname
+      const url = new URL(imageUrl);
+      const pathParts = url.pathname.split('/');
+      const encodedPath = pathParts.map(part => encodeURIComponent(part)).join('/');
+      encodedUrl = `${url.origin}${encodedPath}${url.search}`;
+    } catch (e) {
+      console.error('Failed to encode URL:', e);
+    }
+
     // Fetch the image and convert to base64
-    const imageResponse = await fetch(imageUrl);
+    const imageResponse = await fetch(encodedUrl);
     if (!imageResponse.ok) {
       throw new Error('Failed to fetch image from storage');
     }
