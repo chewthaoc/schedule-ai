@@ -8,14 +8,18 @@ import { User, Bell, Shield, CreditCard } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { createBrowserClient } from '@/lib/supabase/browser-client';
 import { LoadingSpinner } from '@/components/ui/Loading';
+import { uploadAvatar } from '@/lib/supabase/storage';
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState('profile');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
   const [profile, setProfile] = useState({
     fullName: '',
     email: '',
+    avatarUrl: '',
   });
   const [passwordData, setPasswordData] = useState({
     currentPassword: '',
@@ -33,9 +37,11 @@ export default function SettingsPage() {
       const { data: { user } } = await supabase.auth.getUser();
 
       if (user) {
+        setUserId(user.id);
         setProfile({
           fullName: user.user_metadata?.full_name || '',
           email: user.email || '',
+          avatarUrl: user.user_metadata?.avatar_url || '',
         });
       }
     } catch (error) {
@@ -43,6 +49,43 @@ export default function SettingsPage() {
       toast.error('Failed to load profile');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !userId) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file');
+      return;
+    }
+
+    // Validate file size (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('Image must be less than 2MB');
+      return;
+    }
+
+    setUploadingAvatar(true);
+    try {
+      const avatarUrl = await uploadAvatar(file, userId);
+
+      const supabase = createBrowserClient();
+      const { error } = await supabase.auth.updateUser({
+        data: { avatar_url: avatarUrl },
+      });
+
+      if (error) throw error;
+
+      setProfile({ ...profile, avatarUrl });
+      toast.success('Avatar updated successfully!');
+    } catch (error: any) {
+      console.error('Error uploading avatar:', error);
+      toast.error(error.message || 'Failed to upload avatar');
+    } finally {
+      setUploadingAvatar(false);
     }
   };
 
@@ -169,10 +212,38 @@ export default function SettingsPage() {
                       Avatar
                     </label>
                     <div className="flex items-center gap-4">
-                      <div className="w-20 h-20 rounded-full bg-[#8D6E63] flex items-center justify-center text-white text-2xl font-semibold">
-                        {profile.fullName ? profile.fullName.charAt(0).toUpperCase() : 'U'}
+                      {profile.avatarUrl ? (
+                        <img
+                          src={profile.avatarUrl}
+                          alt="Avatar"
+                          className="w-20 h-20 rounded-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-20 h-20 rounded-full bg-[#8D6E63] flex items-center justify-center text-white text-2xl font-semibold">
+                          {profile.fullName ? profile.fullName.charAt(0).toUpperCase() : 'U'}
+                        </div>
+                      )}
+                      <div>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleAvatarChange}
+                          className="hidden"
+                          id="avatar-upload"
+                          disabled={uploadingAvatar}
+                        />
+                        <label
+                          htmlFor="avatar-upload"
+                          className={`inline-flex items-center justify-center px-3 py-1.5 text-sm font-medium rounded-lg transition-all border border-[#D7CCC8] text-[#2C1810] hover:bg-[#F5F0E8] cursor-pointer ${
+                            uploadingAvatar ? 'opacity-50 cursor-not-allowed' : ''
+                          }`}
+                        >
+                          {uploadingAvatar ? 'Uploading...' : 'Change Avatar'}
+                        </label>
+                        <p className="text-xs text-[#8D6E63] mt-1">
+                          JPG, PNG or GIF (max 2MB)
+                        </p>
                       </div>
-                      <Button variant="outline" size="sm" disabled>Change Avatar (Coming Soon)</Button>
                     </div>
                   </div>
                   <div className="pt-4">

@@ -29,6 +29,34 @@ export async function uploadScheduleImage(file: File, userId: string): Promise<s
   return publicUrl;
 }
 
+export async function uploadAvatar(file: File, userId: string): Promise<string> {
+  const supabase = createBrowserClient();
+
+  // Generate unique filename
+  const fileExt = file.name.split('.').pop();
+  const fileName = `avatar.${fileExt}`;
+  const filePath = `${userId}/${fileName}`;
+
+  // Upload file to Supabase Storage (upsert to replace existing)
+  const { data, error } = await supabase.storage
+    .from('avatars')
+    .upload(filePath, file, {
+      cacheControl: '3600',
+      upsert: true, // Replace existing avatar
+    });
+
+  if (error) {
+    throw new Error(`Failed to upload avatar: ${error.message}`);
+  }
+
+  // Get public URL
+  const { data: { publicUrl } } = supabase.storage
+    .from('avatars')
+    .getPublicUrl(filePath);
+
+  return publicUrl;
+}
+
 export async function deleteScheduleImage(imageUrl: string, userId: string): Promise<void> {
   const supabase = createBrowserClient();
 
