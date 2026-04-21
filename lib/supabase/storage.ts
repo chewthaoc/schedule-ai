@@ -3,9 +3,16 @@ import { createBrowserClient } from './browser-client';
 export async function uploadScheduleImage(file: File, userId: string): Promise<string> {
   const supabase = createBrowserClient();
 
-  // Generate unique filename
+  // Generate unique filename with safe extension
   const timestamp = Date.now();
-  const fileExt = file.name.split('.').pop();
+  // Get file extension from MIME type to avoid encoding issues
+  const mimeType = file.type;
+  let fileExt = 'jpg'; // default
+  if (mimeType === 'image/png') fileExt = 'png';
+  else if (mimeType === 'image/jpeg' || mimeType === 'image/jpg') fileExt = 'jpg';
+  else if (mimeType === 'image/gif') fileExt = 'gif';
+  else if (mimeType === 'image/webp') fileExt = 'webp';
+
   const fileName = `${timestamp}_${Math.random().toString(36).substring(7)}.${fileExt}`;
   const filePath = `${userId}/${fileName}`;
 
@@ -32,8 +39,14 @@ export async function uploadScheduleImage(file: File, userId: string): Promise<s
 export async function uploadAvatar(file: File, userId: string): Promise<string> {
   const supabase = createBrowserClient();
 
-  // Generate unique filename
-  const fileExt = file.name.split('.').pop();
+  // Generate unique filename with safe extension
+  const mimeType = file.type;
+  let fileExt = 'jpg'; // default
+  if (mimeType === 'image/png') fileExt = 'png';
+  else if (mimeType === 'image/jpeg' || mimeType === 'image/jpg') fileExt = 'jpg';
+  else if (mimeType === 'image/gif') fileExt = 'gif';
+  else if (mimeType === 'image/webp') fileExt = 'webp';
+
   const fileName = `avatar.${fileExt}`;
   const filePath = `${userId}/${fileName}`;
 
