@@ -38,6 +38,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Fetch the image and convert to base64
+    const imageResponse = await fetch(imageUrl);
+    if (!imageResponse.ok) {
+      throw new Error('Failed to fetch image from storage');
+    }
+
+    const imageBuffer = await imageResponse.arrayBuffer();
+    const base64Image = Buffer.from(imageBuffer).toString('base64');
+    const mimeType = imageResponse.headers.get('content-type') || 'image/jpeg';
+    const dataUrl = `data:${mimeType};base64,${base64Image}`;
+
     const response = await openai.chat.completions.create({
       model: getModelName(),
       messages: [
@@ -60,7 +71,7 @@ Return ONLY valid JSON array format: [{"title":"...","description":"...","locati
             {
               type: 'image_url',
               image_url: {
-                url: imageUrl,
+                url: dataUrl,
               },
             },
           ],
