@@ -21,6 +21,12 @@ export default function SettingsPage() {
     email: '',
     avatarUrl: '',
   });
+  const [notifications, setNotifications] = useState({
+    emailNotifications: true,
+    eventReminders: true,
+    weeklySummary: false,
+    marketingEmails: false,
+  });
   const [passwordData, setPasswordData] = useState({
     currentPassword: '',
     newPassword: '',
@@ -43,6 +49,17 @@ export default function SettingsPage() {
           email: user.email || '',
           avatarUrl: user.user_metadata?.avatar_url || '',
         });
+
+        // Load notification preferences
+        const prefs = user.user_metadata?.notification_preferences;
+        if (prefs) {
+          setNotifications({
+            emailNotifications: prefs.emailNotifications ?? true,
+            eventReminders: prefs.eventReminders ?? true,
+            weeklySummary: prefs.weeklySummary ?? false,
+            marketingEmails: prefs.marketingEmails ?? false,
+          });
+        }
       }
     } catch (error) {
       console.error('Error fetching profile:', error);
@@ -86,6 +103,25 @@ export default function SettingsPage() {
       toast.error(error.message || 'Failed to upload avatar');
     } finally {
       setUploadingAvatar(false);
+    }
+  };
+
+  const handleSaveNotifications = async () => {
+    setSaving(true);
+    try {
+      const supabase = createBrowserClient();
+      const { error } = await supabase.auth.updateUser({
+        data: { notification_preferences: notifications },
+      });
+
+      if (error) throw error;
+
+      toast.success('Notification preferences saved!');
+    } catch (error: any) {
+      console.error('Error saving notifications:', error);
+      toast.error(error.message || 'Failed to save preferences');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -262,22 +298,48 @@ export default function SettingsPage() {
                 <h2 className="text-xl font-semibold text-[#2C1810] mb-6">Notification Preferences</h2>
                 <div className="space-y-4">
                   {[
-                    { label: 'Email Notifications', description: 'Receive email updates about your schedules' },
-                    { label: 'Event Reminders', description: 'Get notified before events start' },
-                    { label: 'Weekly Summary', description: 'Receive weekly schedule summary' },
-                    { label: 'Marketing Emails', description: 'Receive updates about new features' },
-                  ].map((item, index) => (
-                    <div key={index} className="flex items-center justify-between p-4 rounded-lg border border-[#D7CCC8]">
+                    {
+                      key: 'emailNotifications',
+                      label: 'Email Notifications',
+                      description: 'Receive email updates about your schedules'
+                    },
+                    {
+                      key: 'eventReminders',
+                      label: 'Event Reminders',
+                      description: 'Get notified before events start'
+                    },
+                    {
+                      key: 'weeklySummary',
+                      label: 'Weekly Summary',
+                      description: 'Receive weekly schedule summary'
+                    },
+                    {
+                      key: 'marketingEmails',
+                      label: 'Marketing Emails',
+                      description: 'Receive updates about new features'
+                    },
+                  ].map((item) => (
+                    <div key={item.key} className="flex items-center justify-between p-4 rounded-lg border border-[#D7CCC8]">
                       <div>
                         <h3 className="font-medium text-[#2C1810]">{item.label}</h3>
                         <p className="text-sm text-[#8D6E63]">{item.description}</p>
                       </div>
                       <label className="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" className="sr-only peer" defaultChecked={index < 2} />
+                        <input
+                          type="checkbox"
+                          className="sr-only peer"
+                          checked={notifications[item.key as keyof typeof notifications]}
+                          onChange={(e) => setNotifications({ ...notifications, [item.key]: e.target.checked })}
+                        />
                         <div className="w-11 h-6 bg-[#D7CCC8] peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-[#8D6E63] rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#2C1810]"></div>
                       </label>
                     </div>
                   ))}
+                </div>
+                <div className="mt-6">
+                  <Button variant="primary" onClick={handleSaveNotifications} disabled={saving}>
+                    {saving ? 'Saving...' : 'Save Preferences'}
+                  </Button>
                 </div>
               </CardBody>
             </Card>
