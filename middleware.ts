@@ -72,8 +72,9 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(redirectUrl);
   }
 
-  // Redirect to dashboard if accessing login/register with active session
-  if ((request.nextUrl.pathname === '/login' || request.nextUrl.pathname === '/register') && session) {
+  // Redirect to dashboard if accessing login/register/password-reset with active session
+  const publicAuthPages = ['/login', '/register', '/forgot-password', '/reset-password'];
+  if (publicAuthPages.includes(request.nextUrl.pathname) && session) {
     return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 
@@ -81,5 +82,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/schedules/:path*', '/analytics/:path*', '/settings/:path*', '/login', '/register'],
+  matcher: ['/dashboard/:path*', '/schedules/:path*', '/analytics/:path*', '/settings/:path*', '/login', '/register', '/forgot-password', '/reset-password'],
 };
