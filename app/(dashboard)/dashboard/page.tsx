@@ -1,11 +1,50 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { Card, CardBody } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Calendar, Upload, TrendingUp, Clock } from 'lucide-react';
 import Link from 'next/link';
+import { LoadingSpinner } from '@/components/ui/Loading';
+import toast from 'react-hot-toast';
+
+interface Schedule {
+  id: string;
+  title: string;
+  type: string;
+  color: string;
+}
 
 export default function DashboardPage() {
+  const [schedules, setSchedules] = useState<Schedule[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchSchedules();
+  }, []);
+
+  const fetchSchedules = async () => {
+    try {
+      const response = await fetch('/api/schedules');
+      if (!response.ok) throw new Error('Failed to fetch schedules');
+
+      const data = await response.json();
+      setSchedules(data.schedules || []);
+    } catch (error) {
+      console.error('Error fetching schedules:', error);
+      toast.error('Failed to load dashboard data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="p-8">
+        <LoadingSpinner size="lg" />
+      </div>
+    );
+  }
   return (
     <div className="p-8">
       <div className="mb-8">
@@ -48,7 +87,7 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-[#8D6E63] mb-1">Schedules</p>
-                <p className="text-3xl font-bold text-[#2C1810]">3</p>
+                <p className="text-3xl font-bold text-[#2C1810]">{schedules.length}</p>
               </div>
               <div className="w-12 h-12 rounded-lg bg-[#E3F2FD] flex items-center justify-center">
                 <TrendingUp className="w-6 h-6 text-[#1565C0]" />
@@ -128,32 +167,35 @@ export default function DashboardPage() {
           </div>
 
           <div className="space-y-4">
-            {[
-              { title: 'Spring 2026 Timetable', type: 'school', events: 15, color: '#2E7D32' },
-              { title: 'Work Schedule', type: 'work', events: 8, color: '#E65100' },
-              { title: 'Gym Routine', type: 'personal', events: 6, color: '#7B1FA2' },
-            ].map((schedule, index) => (
-              <div
-                key={index}
-                className="flex items-center justify-between p-4 rounded-lg border border-[#D7CCC8] hover:border-[#8D6E63] transition-all cursor-pointer"
-              >
-                <div className="flex items-center gap-4">
-                  <div
-                    className="w-3 h-3 rounded-full"
-                    style={{ backgroundColor: schedule.color }}
-                  />
-                  <div>
-                    <h3 className="font-medium text-[#2C1810]">{schedule.title}</h3>
-                    <p className="text-sm text-[#8D6E63]">
-                      {schedule.events} events · {schedule.type}
-                    </p>
+            {schedules.length > 0 ? (
+              schedules.slice(0, 3).map((schedule, index) => (
+                <div
+                  key={schedule.id}
+                  className="flex items-center justify-between p-4 rounded-lg border border-[#D7CCC8] hover:border-[#8D6E63] transition-all cursor-pointer"
+                >
+                  <div className="flex items-center gap-4">
+                    <div
+                      className="w-3 h-3 rounded-full"
+                      style={{ backgroundColor: schedule.color }}
+                    />
+                    <div>
+                      <h3 className="font-medium text-[#2C1810]">{schedule.title}</h3>
+                      <p className="text-sm text-[#8D6E63]">{schedule.type}</p>
+                    </div>
                   </div>
+                  <Link href={`/schedules/${schedule.id}`}>
+                    <Button variant="ghost" size="sm">View</Button>
+                  </Link>
                 </div>
-                <Link href={`/schedules/${index + 1}`}>
-                  <Button variant="ghost" size="sm">View</Button>
+              ))
+            ) : (
+              <div className="text-center py-8 text-[#8D6E63]">
+                <p className="mb-4">No schedules yet</p>
+                <Link href="/schedules/new">
+                  <Button variant="primary" size="sm">Create Your First Schedule</Button>
                 </Link>
               </div>
-            ))}
+            )}
           </div>
         </CardBody>
       </Card>

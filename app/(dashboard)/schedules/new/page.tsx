@@ -37,24 +37,74 @@ export default function NewSchedulePage() {
     setLoading(true);
 
     try {
+      let extractedEvents = [];
+
+      // Step 1: Extract events from image if provided
       if (imageFile && imagePreview) {
-        const response = await fetch('/api/ai/extract', {
+        const extractResponse = await fetch('/api/ai/extract', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ imageUrl: imagePreview }),
         });
 
-        if (!response.ok) throw new Error('Failed to extract events');
+        if (!extractResponse.ok) {
+          throw new Error('Failed to extract events from image');
+        }
 
-        const { events } = await response.json();
-        toast.success(`Extracted ${events.length} events successfully!`);
+        const { events } = await extractResponse.json();
+        extractedEvents = events;
+        toast.success(`Extracted ${events.length} events from image!`);
       }
 
-      toast.success('Schedule created successfully!');
-      router.push('/schedules');
-    } catch (error) {
-      toast.error('Failed to create schedule');
-      console.error(error);
+      // Step 2: Create the schedule
+      const scheduleResponse = await fetch('/api/schedules', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: formData.title,
+          description: formData.description,
+          type: formData.type,
+          color: formData.color,
+          imageUrl: imagePreview || null,
+        }),
+      });
+
+      if (!scheduleResponse.ok) {
+        throw new Error('Failed to create schedule');
+      }
+
+      const { schedule } = await scheduleResponse.json();
+
+      // Step 3: Save extracted events to the schedule
+      if (extractedEvents.length > 0) {
+        const eventPromises = extractedEvents.map((event: any) =>
+          fetch('/api/events', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              scheduleId: schedule.id,
+              title: event.title,
+              description: event.description,
+              location: event.location,
+              startTime: event.startTime,
+              endTime: event.endTime,
+              dayOfWeek: event.dayOfWeek,
+              category: event.category,
+              color: formData.color,
+            }),
+          })
+        );
+
+        await Promise.all(eventPromises);
+        toast.success(`Schedule created with ${extractedEvents.length} events!`);
+      } else {
+        toast.success('Schedule created successfully!');
+      }
+
+      router.push(`/schedules/${schedule.id}`);
+    } catch (error: any) {
+      console.error('Error creating schedule:', error);
+      toast.error(error.message || 'Failed to create schedule');
     } finally {
       setLoading(false);
     }

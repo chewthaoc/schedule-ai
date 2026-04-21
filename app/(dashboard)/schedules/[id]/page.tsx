@@ -1,71 +1,109 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardBody } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { ArrowLeft, Calendar, MapPin, Clock, Edit, Trash2, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import toast from 'react-hot-toast';
+import { LoadingSpinner } from '@/components/ui/Loading';
+import { ErrorMessage } from '@/components/ui/ErrorMessage';
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const TIME_SLOTS = [
   '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00'
 ];
 
+interface Schedule {
+  id: string;
+  title: string;
+  description: string;
+  type: string;
+  color: string;
+}
+
+interface Event {
+  id: string;
+  title: string;
+  location: string;
+  start_time: string;
+  end_time: string;
+  day_of_week: number;
+  category: string;
+  color: string;
+}
+
 export default function ScheduleDetailPage({ params }: { params: { id: string } }) {
   const router = useRouter();
   const [view, setView] = useState<'grid' | 'list'>('grid');
+  const [schedule, setSchedule] = useState<Schedule | null>(null);
+  const [events, setEvents] = useState<Event[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const schedule = {
-    id: params.id,
-    title: 'Spring 2026 Timetable',
-    description: 'University course schedule',
-    type: 'school',
-    color: '#2E7D32',
+  useEffect(() => {
+    fetchScheduleData();
+  }, [params.id]);
+
+  const fetchScheduleData = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(`/api/schedules/${params.id}`);
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch schedule');
+      }
+
+      const data = await response.json();
+      setSchedule(data.schedule);
+      setEvents(data.schedule.events || []);
+    } catch (error: any) {
+      console.error('Error fetching schedule:', error);
+      setError(error.message);
+      toast.error('Failed to load schedule');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const events = [
-    {
-      id: 1,
-      title: 'Computer Science',
-      location: 'NE-4-17',
-      startTime: '08:30',
-      endTime: '10:30',
-      dayOfWeek: 3,
-      category: 'Lab',
-      color: '#2E7D32',
-    },
-    {
-      id: 2,
-      title: 'Business',
-      location: 'NW-3-18',
-      startTime: '10:30',
-      endTime: '12:30',
-      dayOfWeek: 3,
-      category: 'Tutorial',
-      color: '#E65100',
-    },
-    {
-      id: 3,
-      title: 'Language',
-      location: 'NW-4-2B',
-      startTime: '08:30',
-      endTime: '10:30',
-      dayOfWeek: 2,
-      category: 'Tutorial',
-      color: '#1565C0',
-    },
-    {
-      id: 4,
-      title: 'Math',
-      location: 'NW-3-20',
-      startTime: '15:00',
-      endTime: '17:00',
-      dayOfWeek: 3,
-      category: 'Tutorial',
-      color: '#C62828',
-    },
-  ];
+  const handleDelete = async () => {
+    if (!confirm('Are you sure you want to delete this schedule?')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/schedules/${params.id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete schedule');
+      }
+
+      toast.success('Schedule deleted successfully');
+      router.push('/schedules');
+    } catch (error: any) {
+      console.error('Error deleting schedule:', error);
+      toast.error('Failed to delete schedule');
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="p-8">
+        <LoadingSpinner size="lg" />
+      </div>
+    );
+  }
+
+  if (error || !schedule) {
+    return (
+      <div className="p-8">
+        <ErrorMessage message={error || 'Schedule not found'} onRetry={fetchScheduleData} />
+      </div>
+    );
+  }
 
   return (
     <div className="p-8">
@@ -84,11 +122,7 @@ export default function ScheduleDetailPage({ params }: { params: { id: string } 
           <p className="text-[#5D4037]">{schedule.description}</p>
         </div>
         <div className="flex gap-3">
-          <Button variant="outline">
-            <Edit className="w-4 h-4 mr-2" />
-            Edit
-          </Button>
-          <Button variant="outline">
+          <Button variant="outline" onClick={handleDelete}>
             <Trash2 className="w-4 h-4 mr-2" />
             Delete
           </Button>
@@ -136,7 +170,7 @@ export default function ScheduleDetailPage({ params }: { params: { id: string } 
                     </td>
                     {DAYS.slice(1, 6).map((day, dayIndex) => {
                       const event = events.find(
-                        (e) => e.dayOfWeek === dayIndex + 1 && e.startTime.startsWith(time.slice(0, 2))
+                        (e) => e.day_of_week === dayIndex + 1 && e.start_time.startsWith(time.slice(0, 2))
                       );
                       return (
                         <td key={day} className="py-2 px-2 border border-[#D7CCC8] align-top">
@@ -166,7 +200,7 @@ export default function ScheduleDetailPage({ params }: { params: { id: string } 
       {view === 'list' && (
         <div className="space-y-4">
           {DAYS.slice(1, 6).map((day, dayIndex) => {
-            const dayEvents = events.filter((e) => e.dayOfWeek === dayIndex + 1);
+            const dayEvents = events.filter((e) => e.day_of_week === dayIndex + 1);
             return (
               <Card key={day}>
                 <div className="bg-[#2C1810] text-white py-3 px-6 text-sm font-medium">
@@ -178,7 +212,7 @@ export default function ScheduleDetailPage({ params }: { params: { id: string } 
                       <div key={event.id} className="flex items-center justify-between p-4 hover:bg-[#F5F0E8] transition-colors">
                         <div className="flex items-center gap-4">
                           <div className="w-24 text-sm font-medium text-[#8D6E63]">
-                            {event.startTime} - {event.endTime}
+                            {event.start_time} - {event.end_time}
                           </div>
                           <div>
                             <div className="font-semibold text-[#2C1810]">{event.title}</div>
