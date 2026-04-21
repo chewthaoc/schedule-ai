@@ -122,6 +122,12 @@ export default function ScheduleDetailPage({ params }: { params: { id: string } 
           <p className="text-[#5D4037]">{schedule.description}</p>
         </div>
         <div className="flex gap-3">
+          <Link href={`/schedules/${params.id}/edit`}>
+            <Button variant="outline">
+              <Edit className="w-4 h-4 mr-2" />
+              Edit
+            </Button>
+          </Link>
           <Button variant="outline" onClick={handleDelete}>
             <Trash2 className="w-4 h-4 mr-2" />
             Delete
