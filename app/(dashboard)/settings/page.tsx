@@ -1,22 +1,111 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardBody } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { User, Bell, Shield, CreditCard } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { createBrowserClient } from '@/lib/supabase/browser-client';
+import { LoadingSpinner } from '@/components/ui/Loading';
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState('profile');
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [profile, setProfile] = useState({
-    fullName: 'John Doe',
-    email: 'john@example.com',
+    fullName: '',
+    email: '',
+  });
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
   });
 
-  const handleSaveProfile = () => {
-    toast.success('Profile updated successfully!');
+  useEffect(() => {
+    fetchUserProfile();
+  }, []);
+
+  const fetchUserProfile = async () => {
+    try {
+      const supabase = createBrowserClient();
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (user) {
+        setProfile({
+          fullName: user.user_metadata?.full_name || '',
+          email: user.email || '',
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching profile:', error);
+      toast.error('Failed to load profile');
+    } finally {
+      setLoading(false);
+    }
   };
+
+  const handleSaveProfile = async () => {
+    setSaving(true);
+    try {
+      const supabase = createBrowserClient();
+      const { error } = await supabase.auth.updateUser({
+        data: { full_name: profile.fullName },
+      });
+
+      if (error) throw error;
+
+      toast.success('Profile updated successfully!');
+    } catch (error: any) {
+      console.error('Error updating profile:', error);
+      toast.error(error.message || 'Failed to update profile');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      toast.error('New passwords do not match');
+      return;
+    }
+
+    if (passwordData.newPassword.length < 6) {
+      toast.error('Password must be at least 6 characters');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const supabase = createBrowserClient();
+      const { error } = await supabase.auth.updateUser({
+        password: passwordData.newPassword,
+      });
+
+      if (error) throw error;
+
+      toast.success('Password updated successfully!');
+      setPasswordData({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: '',
+      });
+    } catch (error: any) {
+      console.error('Error changing password:', error);
+      toast.error(error.message || 'Failed to change password');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="p-8">
+        <LoadingSpinner size="lg" />
+      </div>
+    );
+  }
 
   const tabs = [
     { id: 'profile', label: 'Profile', icon: User },
@@ -81,14 +170,14 @@ export default function SettingsPage() {
                     </label>
                     <div className="flex items-center gap-4">
                       <div className="w-20 h-20 rounded-full bg-[#8D6E63] flex items-center justify-center text-white text-2xl font-semibold">
-                        JD
+                        {profile.fullName ? profile.fullName.charAt(0).toUpperCase() : 'U'}
                       </div>
-                      <Button variant="outline" size="sm">Change Avatar</Button>
+                      <Button variant="outline" size="sm" disabled>Change Avatar (Coming Soon)</Button>
                     </div>
                   </div>
                   <div className="pt-4">
-                    <Button variant="primary" onClick={handleSaveProfile}>
-                      Save Changes
+                    <Button variant="primary" onClick={handleSaveProfile} disabled={saving}>
+                      {saving ? 'Saving...' : 'Save Changes'}
                     </Button>
                   </div>
                 </div>
@@ -131,10 +220,30 @@ export default function SettingsPage() {
                   <div>
                     <h3 className="font-medium text-[#2C1810] mb-4">Change Password</h3>
                     <div className="space-y-4">
-                      <Input label="Current Password" type="password" />
-                      <Input label="New Password" type="password" />
-                      <Input label="Confirm New Password" type="password" />
-                      <Button variant="primary">Update Password</Button>
+                      <Input
+                        label="Current Password"
+                        type="password"
+                        value={passwordData.currentPassword}
+                        onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
+                        placeholder="Enter current password"
+                      />
+                      <Input
+                        label="New Password"
+                        type="password"
+                        value={passwordData.newPassword}
+                        onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
+                        placeholder="At least 6 characters"
+                      />
+                      <Input
+                        label="Confirm New Password"
+                        type="password"
+                        value={passwordData.confirmPassword}
+                        onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+                        placeholder="Re-enter new password"
+                      />
+                      <Button variant="primary" onClick={handleChangePassword} disabled={saving}>
+                        {saving ? 'Updating...' : 'Update Password'}
+                      </Button>
                     </div>
                   </div>
                   <div className="pt-6 border-t border-[#E8DFD5]">

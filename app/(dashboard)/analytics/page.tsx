@@ -1,26 +1,64 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { Card, CardBody } from '@/components/ui/Card';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
+import { LoadingSpinner } from '@/components/ui/Loading';
+import toast from 'react-hot-toast';
 
-const weeklyData = [
-  { day: 'Mon', hours: 0 },
-  { day: 'Tue', hours: 4 },
-  { day: 'Wed', hours: 6 },
-  { day: 'Thu', hours: 3 },
-  { day: 'Fri', hours: 6 },
-  { day: 'Sat', hours: 0 },
-  { day: 'Sun', hours: 0 },
-];
-
-const typeData = [
-  { name: 'School', value: 15, color: '#2E7D32' },
-  { name: 'Work', value: 8, color: '#E65100' },
-  { name: 'Personal', value: 6, color: '#7B1FA2' },
-  { name: 'Events', value: 3, color: '#1565C0' },
-];
+interface Analytics {
+  totalEvents: number;
+  totalSchedules: number;
+  avgHoursPerWeek: number;
+  busiestDay: string;
+  busiestDayHours: number;
+  freeTime: number;
+  weeklyData: Array<{ day: string; hours: number }>;
+  typeData: Array<{ name: string; value: number; color: string }>;
+}
 
 export default function AnalyticsPage() {
+  const [analytics, setAnalytics] = useState<Analytics | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchAnalytics();
+  }, []);
+
+  const fetchAnalytics = async () => {
+    try {
+      const response = await fetch('/api/analytics');
+      if (!response.ok) throw new Error('Failed to fetch analytics');
+
+      const data = await response.json();
+      setAnalytics(data.analytics);
+    } catch (error) {
+      console.error('Error fetching analytics:', error);
+      toast.error('Failed to load analytics');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="p-8">
+        <LoadingSpinner size="lg" />
+      </div>
+    );
+  }
+
+  if (!analytics) {
+    return (
+      <div className="p-8">
+        <Card>
+          <CardBody className="p-12 text-center">
+            <p className="text-[#8D6E63]">No analytics data available</p>
+          </CardBody>
+        </Card>
+      </div>
+    );
+  }
   return (
     <div className="p-8">
       <div className="mb-8">
@@ -33,31 +71,31 @@ export default function AnalyticsPage() {
         <Card hover>
           <CardBody>
             <p className="text-sm text-[#8D6E63] mb-1">Total Events</p>
-            <p className="text-3xl font-bold text-[#2C1810]">32</p>
-            <p className="text-xs text-[#2E7D32] mt-2">↑ 12% from last month</p>
+            <p className="text-3xl font-bold text-[#2C1810]">{analytics.totalEvents}</p>
+            <p className="text-xs text-[#8D6E63] mt-2">Across all schedules</p>
           </CardBody>
         </Card>
 
         <Card hover>
           <CardBody>
             <p className="text-sm text-[#8D6E63] mb-1">Avg Hours/Week</p>
-            <p className="text-3xl font-bold text-[#2C1810]">19</p>
-            <p className="text-xs text-[#2E7D32] mt-2">↑ 5% from last week</p>
+            <p className="text-3xl font-bold text-[#2C1810]">{analytics.avgHoursPerWeek}</p>
+            <p className="text-xs text-[#8D6E63] mt-2">Scheduled time</p>
           </CardBody>
         </Card>
 
         <Card hover>
           <CardBody>
             <p className="text-sm text-[#8D6E63] mb-1">Busiest Day</p>
-            <p className="text-3xl font-bold text-[#2C1810]">Wed</p>
-            <p className="text-xs text-[#8D6E63] mt-2">6 hours scheduled</p>
+            <p className="text-3xl font-bold text-[#2C1810]">{analytics.busiestDay}</p>
+            <p className="text-xs text-[#8D6E63] mt-2">{analytics.busiestDayHours}h scheduled</p>
           </CardBody>
         </Card>
 
         <Card hover>
           <CardBody>
             <p className="text-sm text-[#8D6E63] mb-1">Free Time</p>
-            <p className="text-3xl font-bold text-[#2C1810]">81h</p>
+            <p className="text-3xl font-bold text-[#2C1810]">{analytics.freeTime}h</p>
             <p className="text-xs text-[#8D6E63] mt-2">per week available</p>
           </CardBody>
         </Card>
@@ -69,7 +107,7 @@ export default function AnalyticsPage() {
           <CardBody>
             <h2 className="text-xl font-semibold text-[#2C1810] mb-6">Weekly Distribution</h2>
             <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={weeklyData}>
+              <BarChart data={analytics.weeklyData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#E8DFD5" />
                 <XAxis dataKey="day" stroke="#8D6E63" />
                 <YAxis stroke="#8D6E63" />
@@ -92,7 +130,7 @@ export default function AnalyticsPage() {
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
                 <Pie
-                  data={typeData}
+                  data={analytics.typeData}
                   cx="50%"
                   cy="50%"
                   labelLine={false}
@@ -101,7 +139,7 @@ export default function AnalyticsPage() {
                   fill="#8884d8"
                   dataKey="value"
                 >
-                  {typeData.map((entry, index) => (
+                  {analytics.typeData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
@@ -129,7 +167,7 @@ export default function AnalyticsPage() {
                 <div>
                   <h3 className="font-semibold text-[#2E7D32] mb-1">Peak Productivity</h3>
                   <p className="text-sm text-[#5D4037]">
-                    Your busiest days are Wednesday and Friday. Consider scheduling important tasks during these days.
+                    Your busiest day is {analytics.busiestDay} with {analytics.busiestDayHours} hours scheduled. Consider scheduling important tasks during your peak productivity times.
                   </p>
                 </div>
               </div>
@@ -141,7 +179,7 @@ export default function AnalyticsPage() {
                 <div>
                   <h3 className="font-semibold text-[#E65100] mb-1">Time Balance</h3>
                   <p className="text-sm text-[#5D4037]">
-                    You have 81 hours of free time per week. Consider adding more personal development activities.
+                    You have {analytics.freeTime} hours of free time per week. {analytics.freeTime > 50 ? 'Consider adding more productive activities or personal development time.' : 'Your schedule is well-balanced!'}
                   </p>
                 </div>
               </div>
@@ -153,7 +191,9 @@ export default function AnalyticsPage() {
                 <div>
                   <h3 className="font-semibold text-[#1565C0] mb-1">Schedule Consistency</h3>
                   <p className="text-sm text-[#5D4037]">
-                    Your schedule is well-balanced across different activity types. Keep up the good work!
+                    {analytics.typeData.length > 1
+                      ? 'Your schedule is well-balanced across different activity types. Keep up the good work!'
+                      : 'Consider diversifying your schedule with different types of activities for better work-life balance.'}
                   </p>
                 </div>
               </div>
